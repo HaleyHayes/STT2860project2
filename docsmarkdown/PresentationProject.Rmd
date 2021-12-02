@@ -1,0 +1,105 @@
+---
+title: "Final Presentation"
+author: "Ben Whitehead"
+date: '`r format(Sys.time(), "%A, %B %d, %Y @ %I:%M %p")`'
+output: 
+  html_document: 
+    theme: cosmo
+    highlight: textmate
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  message = FALSE,
+  warning = FALSE,
+  comment = NA
+)
+```
+
+## Libraries Used
+
+```{r}
+library(readr)
+library(tidyverse)
+library(lubridate)
+library(openxlsx)
+library(readxl)
+library(jsonlite)
+```
+
+
+## Billionaire Data Set
+
+### What my plot says.
+I decided to do a scatter plot with three different variables: x being the combined worth of Billionaires in that Industry, the y being the total number of Billionaires in that Industry, and the color representing the Industry that is being represented.  I used a log10 scale on the total worth, because the extreme outlier value in the Technology Billionaires made the data hard to see.
+
+```{r billionaires}
+billionaires <- read_csv("~/git_repositories/STT2860project2/dataraw/billionaires_2021_10_31.csv")
+
+billionaires %>% 
+  select(Industry, Total_Net_Worth_Bil) %>% 
+  group_by(Industry) %>% 
+  summarize(totalbillions = sum(Total_Net_Worth_Bil), totalPeople = n()) %>% 
+  ggplot(aes(x = log10(totalbillions), y = totalPeople, color = Industry)) +
+  geom_point(size = 4) +
+  labs(title = "Count of Billionaires and Worth based upon Industry", 
+       x = "Total worth", 
+       y = "Count of Billionaires",
+       subtitle = "10^(total worth) = dollar amounts")
+ 
+```
+
+## Real World Data Wrangling
+
+### Employee hours for audit
+
+  My second part is an example of using the skills we have learned throughout this course and applying them to a real world problem.  In this case, I was asked to submit weekly hours for an employee, and to use the governments preferred format of the weeks running from Sunday through Saturday, by weekly amount.  In this case, we use Monday through Sunday and we run our payroll every two weeks, so any of our existing data would be useless to transpose. When I started viewing the time clock options, I noticed that I could download a csv file, so I decided to put my new skills to work.   
+  First I want to show what the original data looked like.  Second, I show what the data looked like after skipping the first two rows, going 103 max lines and then separating the data by ",,". Next, I get rid of the unnecessary columns, and mutate the hourly data to read in correctly, in order to perform the other calculations.  I used epiweek, instead of isoweek, as this is the correct format for the governments week of Sunday through Saturday. Then I grouped by year and then week and lastly Position, as this would show both positions that this person works.  When I summed the TotalHrs, it came out as seconds, so I needed to convert it to hours format. At last, I wrote the file back out as an excel file, so that we could submit it.
+
+
+
+```{r olympics}
+Job_test <- read_csv("~/personal/Job-Punchcard-ReportNovember-29-2021-91144-am.csv") 
+Job_test
+
+Job_test_2 <- read_csv("~/personal/Job-Punchcard-ReportNovember-29-2021-91144-am.csv", 
+                       skip = 2, n_max = 103, quote = ",,", 
+                       col_names = c("TimeIn", "TimeOut", 
+                                     "TotalHrs", "4", 
+                                     "Position", "6", 
+                                     "7", "8", "9", 
+                                     "10", "11"))
+Job_test_2
+
+Job_test_3 <- read_csv("~/personal/Job-Punchcard-ReportNovember-29-2021-91144-am.csv", 
+                       skip = 2, 
+                       n_max = 103, 
+                       quote = ",,", 
+                       col_names = c("TimeIn", "TimeOut", 
+                                     "TotalHrs", "4", 
+                                     "Position", "6", 
+                                     "7", "8", "9", 
+                                     "10", "11")) %>% 
+              select(TimeIn, TimeOut, TotalHrs, Position) %>% 
+              mutate(TimeIn = parse_date_time(TimeIn, "%I:%M:%S %p %b %d %Y"),
+                     TimeOut = parse_date_time(TimeOut, "%I:%M:%S %p %b %d %Y"),
+                     week = epiweek(TimeIn), 
+                     year = year(TimeIn)) %>% 
+              group_by(year, week, Position) %>%
+              summarize(hours = seconds_to_period(sum(TotalHrs)))
+
+Job_test_3
+
+# write.xlsx(Job_test_3, file = "Job.xlsx")
+
+```
+
+
+
+
+
+
+```{r}
+sessionInfo()
+```

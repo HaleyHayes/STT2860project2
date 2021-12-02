@@ -1,6 +1,6 @@
 ---
 title: "Project 2A: Galton Data"
-author: "PUT YOUR NAME HERE"
+author: "Ben Whitehead"
 date: '`r format(Sys.time(), "%A, %B %d, %Y @ %I:%M %p")`'
 output: 
   html_document: 
@@ -23,22 +23,26 @@ knitr::opts_chunk$set(
 ### Packages Used
 
 ```{r loadpackages}
-
+library(tidyverse)
+library(expss)
 ```
 
 ### Datasets Used
 
 ```{r loaddatamain}
-
+galtonfamiliesmain <- read_csv("https://raw.githubusercontent.com/STAT-JET-ASU/Datasets/master/Instructor/galtonfamiliesmain.csv")
+glimpse(galtonfamiliesmain)
 ```
 
 ```{r loaddatasub}
+galtonfamiliessub <- read_csv("https://raw.githubusercontent.com/STAT-JET-ASU/Datasets/master/Instructor/galtonfamiliessub.csv")
+glimpse(galtonfamiliessub)
 
 ```
 
 ### Collaborators
 
-ADD NAMES HERE OR WRITE "None"
+NONE
 
 <hr>
 
@@ -70,6 +74,38 @@ Load the `galtonfamiliesmain.csv` and `galtonfamiliessub.csv` datasets above und
 
 ```{r assembledata1}
 
+data_main <- galtonfamiliesmain %>% 
+  transmute(familyid = as.numeric(replace(FamilyID,
+                                          FamilyID == "136A", 205)),
+            num_children = Children,
+            father_ht = Father,
+            mother_ht = Mother * 1.08,
+            midparent = (father_ht + mother_ht)/2,
+            child_sex = tolower(Child),
+            child_ht = ifelse(child_sex == "son",
+                              Height, Height*1.08)
+            )
+
+data_sub <- galtonfamiliessub %>% 
+  transmute(familyid = FamilyID,
+            num_children = Children,
+            father_ht = FatherR + 60,
+            mother_ht = (MotherR + 60) * 1.08,
+            midparent = (father_ht + mother_ht)/2,
+            child_sex = tolower(Child),
+            child_ht = ifelse(child_sex == "son",
+                              HeightR + 60,
+                              (HeightR + 60)*1.08)
+            )
+
+data_full <- data_main %>% 
+  bind_rows(data_sub)
+
+data_full_ordered <- data_full %>% 
+  arrange(familyid, desc(child_sex), desc(child_ht))
+
+data.table(data_full_ordered)
+
 ```
 
 #### Dataset #2
@@ -77,7 +113,10 @@ Load the `galtonfamiliesmain.csv` and `galtonfamiliessub.csv` datasets above und
 Select the variables `familyid` and `num_children` and reduce the dataset so that it contains only one row per family. Again, use `datatable()` from the DT package to display the result.
 
 ```{r assembledata2}
-
+reduced_data <- data_full_ordered %>% 
+  select(familyid, num_children) %>% 
+  distinct()
+glimpse(reduced_data)
 ```
 
 ### Part 1: Parent/Child Heights
@@ -107,6 +146,19 @@ Also include the following.
 * use `theme()` to move the legend to the bottom of the scatterplot
 
 ```{r updatedscatterplot1}
+ggplot(data_full_ordered, aes(x = child_ht,
+                              y = midparent,
+                              color = child_sex)) +
+  geom_jitter(size = 3, alpha = 0.4) +
+  scale_color_manual(values = c("purple", "black")) +
+  scale_x_continuous(breaks = c(59:85)) +
+  scale_y_continuous(breaks = c(64:76)) +
+  labs(title = "Galton Parents Height over their Childrens Height",
+       x = "Childrens Height in Inches", 
+       y = "Parents Average Height in Inches") +
+  coord_fixed() +
+  theme_linedraw() +
+  theme()
 
 ```
 
@@ -114,7 +166,30 @@ Also include the following.
 
 Remove the color coding for sons versus daughters from your plot, as well as any other coding related to it. Instead, choose n single color for the points and adjust both `size` and transparency (`alpha`) as needed to correct for overplotting and help show the density of points. Reset the `aes` so child height is the `x` variable and midparent height is the `y` variable. Add a fitted *straight* line to the plot. Update your `labs` accordingly.
 
-```{r updatedscatterplot2}
+```{r updatedscatterplot2, fig.height = 6}
+ggplot(data_full_ordered, aes(x = child_ht, y = midparent)) +
+  geom_jitter(size = 3, alpha = 0.3) +
+  geom_smooth(method = "lm") +
+  scale_x_continuous(breaks = c(59:85)) +
+  scale_y_continuous(breaks = c(64:76)) +
+  labs(title = "Galton Average Parent Height over their Children",
+       x = "Childrens Height in Inches", 
+       y = "Average Parents Height in Inches") +
+  coord_fixed() +
+  theme_linedraw() +
+  theme()
+
+ggplot(data_full_ordered, aes(y = child_ht, x = midparent)) +
+  geom_jitter(size = 3, alpha = 0.3) +
+  geom_smooth(method = "lm") +
+  scale_x_continuous(breaks = c(64:76)) +
+  scale_y_continuous(breaks = c(59:85)) +
+  labs(title = "Height of Children over Parents", 
+       x = "Average Parents Height in Inches", 
+       y = "Childrens Height in Inches") +
+  coord_fixed() +
+  theme_linedraw() +
+  theme()
 
 ```
 
@@ -123,7 +198,13 @@ Remove the color coding for sons versus daughters from your plot, as well as any
 Create a barplot to show the distribution of the number of children per family. Set the bars to something other than the default `width`. Scale the x-axis so that there is a tick mark for each bar. Choose appropriate colors, labels, themes, and/or and other types of formatting that you feel will enhance the meaning or visual appearance of the plot.
 
 ```{r childrenbarplot}
-
+ggplot(reduced_data, aes(x = num_children)) +
+  geom_bar(color = "black", fill = "skyblue") +
+  labs(title = "Count of Galton Family Children", 
+       x = "Count of Children in Family", 
+       y = "Count of Families") +
+  scale_x_continuous(breaks = c(0:16)) +
+  theme_minimal()
 ```
 
 ## Questions
@@ -132,19 +213,22 @@ Create a barplot to show the distribution of the number of children per family. 
 
 **ANSWER**
 
-ERASE THIS TEXT AND ANSWER QUESTION HERE
+I do believe that the scatter plots are an "improvement" over Galton's original diagram...at least from an inexperienced Data Scientist's mindset.  I found Galton's diagram to be too busy, especially with how many different sets of numbers are on the graph.  I think that once you understood his diagram, it gave a lot more information; however, if I needed to use this within a presentation or show it to someone not in the "know", the scatter plot does a better job.
+I might also add faceting to these graphs to compare the slope of the three variables: Parents, Sons, Daughters.  
 
-**Question 2:** Explain the rationale behind the choices you made when creating your scatterplots and barplot, such as size, color, transparency, or other features. What motivated your decisions? 
-
-**ANSWER**
-
-ERASE THIS TEXT AND ANSWER QUESTION HERE
-
-**Question 3:** Considering best practices, how does using `coord_fixed()` enhance the authenticity of the information shown in the scatterplots, such as the relationship and spread of the data?
+**Question 2:** Explain the rationale behind the choices you made when creating your scatter plots and bar plot, such as size, color, transparency, or other features. What motivated your decisions? 
 
 **ANSWER**
 
-ERASE THIS TEXT AND ANSWER QUESTION HERE
+I first looked at the scatter plot without any aesthetics changed and decided to use the jitter function.  After this, I played around with colors and realized that black and something darker seemed easy to read.  I adjusted size next, but found that I probably wouldn't have changed it if it wasn't required.  I think that going too large was definitely a concern.  The transparency was a trial and error method, until I liked what I saw.  I used the method = "lm" within the geom_smooth() function after we discussed that it was not "straight".  For the bar plot, I have liked the sky blue bar plots and I like the well defined edges being colored in.
+
+**Question 3:** Considering best practices, how does using `coord_fixed()` enhance the authenticity of the information shown in the scatter plots, such as the relationship and spread of the data?
+
+**ANSWER**
+
+The coord_fixed() function retains the visually consistent data from the x & y axis.  If you do not choose to include it, the graph scales things to "fit" the screen better, however it gives you a noticeably different slope that can make you think that there is more or less of a correlation between the data.  The resizing can also make you perceive that the data is more or less grouped or spread than it really is.
+
+
 
 ***
 ```{r}
