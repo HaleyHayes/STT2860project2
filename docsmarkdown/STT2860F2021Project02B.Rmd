@@ -1,6 +1,6 @@
 ---
 title: "Project 2B: Disney+ Data"
-author: "PUT YOUR NAME HERE"
+author: "Ben Whitehead"
 date: '`r format(Sys.time(), "%A, %B %d, %Y @ %I:%M %p")`'
 output: 
   html_document: 
@@ -23,18 +23,23 @@ knitr::opts_chunk$set(
 ### Packages Used
 
 ```{r loadpackages}
-
+library(tidyverse)
+library(readr)
+library(waffle)
 ```
 
 ### Datasets Used
 
 ```{r Rdatafile}
- 
+load('~/git_repositories/STT2860project2/dataprocessed/streamingcontent.Rdata')
+glimpse(dplus)
+glimpse(strmtv)
+glimpse(strmtv_long)
 ```
 
 ### Collaborators
 
-ADD NAMES HERE OR WRITE "None"
+Ben Whitehead
 
 <hr>
 
@@ -51,9 +56,11 @@ Complete and run the two scripts found in the `docscripts` folder. Your processe
 #### Dataset #1
 
 The `dplus` dataset contains a variable that gives information about the `rating` for each program offering. Convert the variable into a factor that puts the ratings in (roughly) ascending order of age restriction/audience: `TV-Y`, `TV-Y7`, `TV-Y7-FV`, `TV-G`, `G`, `TV-PG`, `PG`, `PG-13`, `TV-14`. If the `date_added` variable is not already in date format, convert it.  
-
 ```{r factorratings}
-
+# change dpluttest to dplus?
+dplus <- dplus %>% 
+  mutate(ratings = factor(rating, levels = c("TV-Y", "TV-Y7", "TV-Y7-FV", "TV-G", "G", "TV-PG", "PG", "PG-13", "TV-14"))) %>% 
+  arrange(ratings)
 ```
 
 #### Dataset #2
@@ -61,7 +68,8 @@ The `dplus` dataset contains a variable that gives information about the `rating
 In the `strmtv` dataset, create a new variable that tells you the total number of streaming services that offer each included program.
 
 ```{r numberofsvcs}
-
+strmtv <- strmtv %>% 
+  mutate(total_services = Netflix + Hulu + `Prime Video` + `Disney+`)
 ```
 
 ### Part 1: Violin Plot
@@ -69,7 +77,15 @@ In the `strmtv` dataset, create a new variable that tells you the total number o
 Create a violin plot of `release_year` (x-axis) grouped by `type` of program (y-axis) for programs on Disney+. Fill with a color of your choice. Add a boxplot inside the violin plot, as you did in one of the DataCamp exercises. Re-scale the x-axis so that tick marks appear at whole-decade intervals (e.g., 1980, 1990, 2000). Add an appropriate title and axis labels. Use other formatting as you choose to enhance effectiveness/appearance.
 
 ```{r}
-
+dplus_filtered <- dplus %>% group_by(type)
+fromdate <- min(dplus_filtered$release_year)
+todate   <- max(dplus_filtered$release_year)
+ggplot(dplus_filtered, aes(x = release_year, y = type)) +
+  geom_violin(fill = "skyblue", color = "black", width = 1.1) +
+  geom_boxplot(width = 0.1) +
+  scale_x_continuous(breaks = seq(1920, 2030, by = 10)) +
+  labs(title = paste("Distribution of Show Types from", fromdate, "to", todate),
+       x = "Year", y = "Show Types")
 ```
 
 ### Part 2: Waffle Plot
@@ -87,6 +103,13 @@ Create a waffle plot to show the distribution of program `type` on Disney+.
 Hint: You can use `count()` to find out how many of each `type` of program there is, then use `prop.table(n)` in a mutate statement (along with some other math) to get percentages. Other methods are also possible.
 
 ```{r}
+(dplus_waffle <- dplus %>% 
+  count(type) %>% 
+  mutate(p = round(n/sum(n)*100)))
+
+names(dplus_waffle$p) <- dplus_waffle$type
+waffle(dplus_waffle$p, rows = 10, xlab = "1 sq == 13~14 shows", 
+       title = "Proportion of Movies versus TV Shows on Disney+")
 
 ```
 
@@ -95,7 +118,16 @@ Hint: You can use `count()` to find out how many of each `type` of program there
 Create a horizontal barplot to show the frequencies of the various `rating` categories for programs on Disney+ (i.e., use `y =` rather than `x =` for the variable you are plotting). You will need to remove a couple `NA` values first. Use faceting by `type` so that you have side-by-side plots for the different program types. Add an appropriate title and axis labels, as well as other formatting of your choice to enhance effectiveness/appearance. 
 
 ```{r}
+# color not working
+dplus_na_rm <-  dplus %>% 
+  filter(ratings == na.omit(ratings)) 
+dplus_na_rm
 
+ggplot(dplus_na_rm, aes(y = ratings, fill = ratings)) +
+  geom_bar() +
+  facet_grid(.~type) +
+  labs(title = "Movie versus TV Show Count of Ratings") +
+  theme(legend.position = "none")
 ```
 
 ### Part 4: Another Plot
@@ -103,6 +135,14 @@ Create a horizontal barplot to show the frequencies of the various `rating` cate
 Use one of the sets that contains data about the TV shows available on various streaming services to compare the quantity of Disney's TV show offerings to the quantity of offerings on other streaming services. Use a plot of your choice to enhance the effectiveness/appearance of the plot.
 
 ```{r}
+strmtv_long %>% 
+  group_by(Service) %>% 
+  ggplot(aes(x = Year, y = Service)) +
+  geom_point() +
+  geom_violin(fill = "skyblue", color = "black", width = 1.1) +
+  scale_x_continuous(breaks = seq(1920, 2030, by = 10)) +
+  labs(title = "Distribution of Streaming Services by Year of Release", 
+       x = "Year Item Released")
 
 ```
 
@@ -111,24 +151,28 @@ Use one of the sets that contains data about the TV shows available on various s
 **Question 1:** Based on your plots, make five informational statements or comparisons regarding the Disney+ streaming service.
 
 **ANSWER**
+I will preface these answers under the assumption that Disney has released it's entire catalog onto Disney+, though I do not believe this to be actually true.
 
-1)
+1) Disney's first movie was released roughly 1927, and their first tv show was roughly 1940.
 
-2)
+2) Up until 1990, there was a small number of yearly options available for both Disney movies and tv shows; and afterwards the amount available for consumption each year increased greatly.
 
-3)
+3) At this moment, Disney is roughly 72% movies and 28% tv shows; however, tv shows have become the larger segment as of the last 10 years.
 
-4)
+4) Disney movies are highly likely to be rated for both tv and movie ratings, presumably to be able to play the movie on tv.
 
-5)
+5).  Based upon my last plot: Prime Video offers more "older" selections, while Netflix offers more "newer" selections. All four services offer selections from 1960 on.  It appears that Prime is not offering a lot of "very new" selections.  
 
 **Question 2:** What other data would you like to have, or which existing variables would you like to see transformed, if you were going to do further explorations or visualizations? Give at least two examples.
 
-**ANSWER**
+1. I would like to see how much of the market for age groups that each streaming surface caters to and by type.  Obviously, they each have young children through teenager, but I'm curious the proportions of movies that each offers in regards to ratings.  This would also be interesting to see how many mature audience movies would be offered by each service and type.  For instance, does Netflix have more "action adult" movies than Hulu?
 
-ERASE THIS TEXT AND ANSWER QUESTION HERE
+2. I would like to see how the proportions of each ratings changed in direct relation to the creation of Disney+.  For instance, I'm curious if Netflix lowered it's offerings of children's movies roughly around the same time that Disney+ became an active service.  This would be interesting to me, because it might show some "collusion" behind the scenes in order to get consumers to "add a channel".
 
+3.  I would also be curious what shows were available on the other streaming services and roughly when they got pulled to be exclusive for Disney+.
 ***
+
+
 ```{r}
 sessionInfo()
 ```
